@@ -31,7 +31,7 @@ public:
     }
 
     ArrayPtr& operator= (ArrayPtr&& other)  noexcept {
-        raw_ptr_ = Release();
+        delete[] raw_ptr_;
         raw_ptr_ = std::exchange(other.raw_ptr_, nullptr);
         return *this;
     }
@@ -43,9 +43,9 @@ public:
     // Прекращает владением массивом в памяти, возвращает значение адреса массива
     // После вызова метода указатель на массив должен обнулиться
     [[nodiscard]] Type* Release() noexcept {
-        delete[] raw_ptr_;
+        Type* old_pointer =  raw_ptr_;
         raw_ptr_ = nullptr;
-        return raw_ptr_;
+        return old_pointer;
     }
 
     // Возвращает ссылку на элемент массива с индексом index
