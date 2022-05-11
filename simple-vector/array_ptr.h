@@ -12,8 +12,6 @@ public:
     explicit ArrayPtr(size_t size) {
         if (size) {
             raw_ptr_ = new Type[size];
-        } else {
-            raw_ptr_ = nullptr;
         }
     }
 
@@ -33,6 +31,7 @@ public:
     }
 
     ArrayPtr& operator= (ArrayPtr&& other)  noexcept {
+        raw_ptr_ = Release();
         raw_ptr_ = std::exchange(other.raw_ptr_, nullptr);
         return *this;
     }
@@ -44,10 +43,9 @@ public:
     // Прекращает владением массивом в памяти, возвращает значение адреса массива
     // После вызова метода указатель на массив должен обнулиться
     [[nodiscard]] Type* Release() noexcept {
-        Type* pointer = raw_ptr_;
         delete[] raw_ptr_;
         raw_ptr_ = nullptr;
-        return pointer;
+        return raw_ptr_;
     }
 
     // Возвращает ссылку на элемент массива с индексом index
@@ -74,9 +72,7 @@ public:
 
     // Обменивается значениям указателя на массив с объектом other
     void swap(ArrayPtr& other) noexcept {
-        Type* old_pointer = raw_ptr_;
-        raw_ptr_ = other.raw_ptr_;
-        other.raw_ptr_ = old_pointer;
+        std::swap(raw_ptr_, other.raw_ptr_);
     }
 
 private:

@@ -30,7 +30,9 @@ public:
     explicit SimpleVector(size_t size) : items_(size) {
         size_ = size;
         capacity_ = size;
-        std::fill(this->begin(), this->end(), 0);
+        for (size_t i = 0; i < size; ++i) {
+            items_[i] = Type();
+        }
     }
 
     // Создаёт вектор из size элементов, инициализированных значением value
@@ -45,14 +47,13 @@ public:
         size_ = init.size();
         capacity_ = size_;
         size_t i = 0;
-        for (Type item : init) {
+        for (const Type& item : init) {
             items_[i] = item;
             ++i;
         }
     }
 
     SimpleVector(const SimpleVector& other) {
-        assert(other.capacity_ > this->size_);
         SimpleVector<Type> other_copy(other.size_);
         for (size_t i = 0; i < other.size_; ++i) {
             other_copy[i] = other[i];
@@ -64,10 +65,10 @@ public:
         Reserve(proxyObj.capacity_);
     }
 
-    SimpleVector(SimpleVector<Type>&& other) {
-        items_ = std::move(other.items_);
-        size_ = std::exchange(other.size_, 0);
-        capacity_ = std::exchange(other.capacity_, 0);
+    SimpleVector(SimpleVector<Type>&& other) :
+            items_(std::move(other.items_)),
+            size_(std::exchange(other.size_, 0)),
+            capacity_(std::move(other.capacity_)) {
     };
 
     // Возвращает количество элементов в массиве
@@ -104,6 +105,7 @@ public:
 
     // Возвращает ссылку на элемент с индексом index
     Type& operator[](size_t index) noexcept {
+        assert(index < size_);
         return items_[index];
     }
 
@@ -114,7 +116,9 @@ public:
     }
 
     SimpleVector& operator=(const SimpleVector& rhs) {
-        assert(this != &rhs);
+        if (this == rhs) {
+            return *this;
+        }
         SimpleVector<Type> other_copy(rhs.size_);
         for (size_t i = 0; i < rhs.size_; ++i) {
             other_copy[i] = rhs[i];
@@ -124,6 +128,9 @@ public:
     }
 
     SimpleVector& operator=(SimpleVector<Type>&& other) {
+        if (*this == other) {
+            return *this;
+        }
         items_ = std::move(other.items_);
         size_ = std::exchange(other.size_, 0);
         capacity_ = std::exchange(other.capacity_, 0);
@@ -161,46 +168,40 @@ public:
     void Reserve(size_t new_capacity) {
         if (new_capacity <= capacity_) {
             return;
-        } else {
-            SimpleVector<Type> new_vector(new_capacity);
-            new_vector.Resize(size_);
-            std::copy(begin(), end(), new_vector.begin());
-            swap(new_vector);
         }
+        SimpleVector<Type> new_vector(new_capacity);
+        new_vector.Resize(size_);
+        std::copy(begin(), end(), new_vector.begin());
+        swap(new_vector);
+
     }
 
     // Добавляет элемент в конец вектора
     // При нехватке места увеличивает вдвое вместимость вектора
     void PushBack(const Type& item) {
-        if (size_ < capacity_) {
-            items_[size_] = item;
-            ++size_;
-        } else {
+        if (capacity_ == size_) {
             ArrayPtr<Type> new_array(capacity_ == 0 ? 2 : capacity_ * 2);
             for (size_t i = 0; i < size_; ++i) {
                 new_array[i] = items_[i];
             }
             items_.swap(new_array);
-            items_[size_] = item;
-            ++size_;
             capacity_ = (capacity_ == 0 ? 2 : capacity_ * 2);
         }
+        items_[size_] = item;
+        ++size_;
     }
 
     void PushBack(Type&& item) {
-        if (size_ < capacity_) {
-            items_[size_] = std::exchange(item, 0);
-            ++size_;
-        } else {
+        if (capacity_ == size_) {
             ArrayPtr<Type> new_array(capacity_ == 0 ? 2 : capacity_ * 2);
             for (size_t i = 0; i < size_; ++i) {
                 new_array[i] = std::move(items_[i]);
             }
             items_.swap(new_array);
-            items_[size_] = std::exchange(item, 0);
-            ++size_;
             capacity_ = (capacity_ == 0 ? 2 : capacity_ * 2);
         }
+        items_[size_] = std::exchange(item, 0);
+        ++size_;
     }
 
     // "Удаляет" последний элемент вектора. Вектор не должен быть пустым
@@ -302,7 +303,7 @@ public:
     // Возвращает итератор на элемент, следующий за последним
     // Для пустого массива может быть равен (или не равен) nullptr
     Iterator end() noexcept {
-        return &items_[size_];
+        return items_.Get() + size_;
     }
 
     // Возвращает константный итератор на начало массива
@@ -314,7 +315,7 @@ public:
     // Возвращает итератор на элемент, следующий за последним
     // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator end() const noexcept {
-        return &items_[size_];
+        return items_.Get() + size_;
     }
 
     // Возвращает константный итератор на начало массива
@@ -327,7 +328,7 @@ public:
     // Возвращает итератор на элемент, следующий за последним
     // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator cend() const noexcept {
-        const Type& end = items_[size_];
+        const Type& end = items_.Get() + size_;
         return &end;
     }
 
