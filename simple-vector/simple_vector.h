@@ -68,7 +68,7 @@ public:
     SimpleVector(SimpleVector<Type>&& other) :
             items_(std::move(other.items_)),
             size_(std::exchange(other.size_, 0)),
-            capacity_(std::move(other.capacity_)) {
+            capacity_(other.capacity_) {
     };
 
     // Возвращает количество элементов в массиве
@@ -111,12 +111,13 @@ public:
 
     // Возвращает константную ссылку на элемент с индексом index
     const Type& operator[](size_t index) const noexcept {
+        assert(index <= size_);
         const Type& const_ref = items_[index];
         return const_ref;
     }
 
     SimpleVector& operator=(const SimpleVector& rhs) {
-        if (this == rhs) {
+        if (items_.Get() == rhs.items_.Get()) {
             return *this;
         }
         SimpleVector<Type> other_copy(rhs.size_);
@@ -128,7 +129,7 @@ public:
     }
 
     SimpleVector& operator=(SimpleVector<Type>&& other) {
-        if (*this == other) {
+        if (items_.Get() == other.items_.Get()) {
             return *this;
         }
         items_ = std::move(other.items_);
@@ -181,9 +182,7 @@ public:
     void PushBack(const Type& item) {
         if (capacity_ == size_) {
             ArrayPtr<Type> new_array(capacity_ == 0 ? 2 : capacity_ * 2);
-            for (size_t i = 0; i < size_; ++i) {
-                new_array[i] = items_[i];
-            }
+            std::move(begin(), end(), new_array);
             items_.swap(new_array);
             capacity_ = (capacity_ == 0 ? 2 : capacity_ * 2);
         }
@@ -194,9 +193,7 @@ public:
     void PushBack(Type&& item) {
         if (capacity_ == size_) {
             ArrayPtr<Type> new_array(capacity_ == 0 ? 2 : capacity_ * 2);
-            for (size_t i = 0; i < size_; ++i) {
-                new_array[i] = std::move(items_[i]);
-            }
+            std::move(std::make_move_iterator(begin()), std::make_move_iterator(end()), new_array.Get());
             items_.swap(new_array);
             capacity_ = (capacity_ == 0 ? 2 : capacity_ * 2);
         }
@@ -225,7 +222,7 @@ public:
             new_vector.Resize(size_ + 1);
 
             //Вставка первой половины старого вектора в новый
-            std::copy(cbegin(), pos, new_vector.begin());
+            std::move(cbegin(), pos, new_vector.begin());
 
             //Находим позицию для вставки в старом векторе
             Iterator old_pos = begin() + (pos - cbegin());
@@ -234,7 +231,7 @@ public:
             *new_pos = value;
 
             //Копируем оставшуюся часть старого вектора в новый
-            std::copy_backward(pos, cend(), new_vector.end());
+            std::move_backward(pos, cend(), new_vector.end());
             swap(new_vector);
 
             return new_pos;
@@ -297,7 +294,7 @@ public:
     // Возвращает итератор на начало массива
     // Для пустого массива может быть равен (или не равен) nullptr
     Iterator begin() noexcept {
-        return &items_[0];
+        return items_.Get();
     }
 
     // Возвращает итератор на элемент, следующий за последним
@@ -309,7 +306,7 @@ public:
     // Возвращает константный итератор на начало массива
     // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator begin() const noexcept {
-        return &items_[0];
+        return items_.Get();
     }
 
     // Возвращает итератор на элемент, следующий за последним
@@ -321,14 +318,14 @@ public:
     // Возвращает константный итератор на начало массива
     // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator cbegin() const noexcept {
-        const Type& begin = items_[0];
-        return &begin;
+        const Type* begin = items_.Get();
+        return begin;
     }
 
     // Возвращает итератор на элемент, следующий за последним
     // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator cend() const noexcept {
-        const Type& end = items_.Get() + size_;
+        const Type* end = items_.Get() + size_;
         return &end;
     }
 
