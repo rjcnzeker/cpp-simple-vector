@@ -68,7 +68,7 @@ public:
     SimpleVector(SimpleVector<Type>&& other) :
             items_(std::move(other.items_)),
             size_(std::exchange(other.size_, 0)),
-            capacity_(other.capacity_) {
+            capacity_(std::exchange(other.capacity_, 0)) {
     };
 
     // Возвращает количество элементов в массиве
@@ -111,13 +111,13 @@ public:
 
     // Возвращает константную ссылку на элемент с индексом index
     const Type& operator[](size_t index) const noexcept {
-        assert(index <= size_);
+        assert(index < size_);
         const Type& const_ref = items_[index];
         return const_ref;
     }
 
     SimpleVector& operator=(const SimpleVector& rhs) {
-        if (items_.Get() == rhs.items_.Get()) {
+        if (this == &rhs) {
             return *this;
         }
         SimpleVector<Type> other_copy(rhs.size_);
@@ -129,7 +129,7 @@ public:
     }
 
     SimpleVector& operator=(SimpleVector<Type>&& other) {
-        if (items_.Get() == other.items_.Get()) {
+        if (this == &other) {
             return *this;
         }
         items_ = std::move(other.items_);
